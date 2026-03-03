@@ -182,7 +182,8 @@ ggplotly(
            fill = land_type)) +
   geom_col() +
   labs(y = "area in millions of ha",
-       x = "Country")
+       x = "Country",
+       title = "Land Use")
 )
 ```
 
