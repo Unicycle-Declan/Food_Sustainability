@@ -1,8 +1,11 @@
 ---
-title: "food_sustanibility"
+title: "Food Sustanibility"
 author: "Declan Oberlies"
 date: '`r Sys.Date()`'
 output: ioslides_presentation
+editor_options: 
+  markdown: 
+    wrap: 72
 ---
 
 ```{r setup, include=FALSE}
@@ -23,7 +26,46 @@ library(plotly)
 `%not_in%` <- negate(`%in%`)
 ```
 
-## Slide 1
+## Sustainable Development Goal
+
+SDG 2: eliminate hunger
+
+## Sustainable Development Goal
+
+SDG 2: eliminate hunger
+
+\- grow more food
+
+## Sustainable Development Goal
+
+SDG 2: eliminate hunger
+
+\- grow more food
+
+\- less people
+
+## Sustainable Development Goal
+
+SDG 2: eliminate hunger
+
+\- grow more food
+
+\- ~~less people~~
+
+## Sustainable Development Goal
+
+SDG 2: eliminate hunger
+
+\- grow more food
+
+\- ~~less people~~
+
+\- use food more efficiency
+
+\- avoid supply chain disruptions
+
+## 
+
 ```{r, echo=FALSE}
 url <- "https://ourworldindata.org/explorers/global-food.csv?v=1&csvType=full&useColumnShortNames=true&Food=All+food&Metric=Food+available+for+consumption&Per+capita=true"
 
@@ -48,7 +90,8 @@ calories %>%
   kable(col.names = c("Country", "kilocalories/day/capita"))
 ```
 
-## Slide 2
+## 
+
 ```{r}
 url <- "https://ourworldindata.org/grapher/population-with-un-projections.csv?v=1&csvType=full&useColumnShortNames=true"
 
@@ -74,7 +117,8 @@ joincal %>%
 
 ```
 
-## Slide 3
+## 
+
 ```{r}
 joincal %>%
   mutate(kilocalories_day = kilocalories_day_capita*population) %>%
@@ -84,7 +128,9 @@ joincal %>%
   select(country, kilocalories_day) %>%
   kable(col.names = c("Country", "kilocalories/day"))
 ```
-## Slide 4
+
+## 
+
 ```{r}
 joincal %>%
   mutate(kilocalories_day = kilocalories_day_capita*population) %>%
@@ -93,7 +139,9 @@ joincal %>%
   select(country, population, kilocalories_day_capita, kilocalories_day) %>%
   kable(col.names = c("Country", "Population", "kilocalories/day/capita", "kilocalories/day"))
 ```
-## Slide 5
+
+## 
+
 ```{r}
 # Land use  ====================================================================
 # https://ourworldindata.org/land-use#how-has-global-land-use-changed-over-the-long-term
@@ -103,7 +151,10 @@ land_use <-
   Land_use %>% 
   filter( year %in% 2023, 
           entity %in% c('United States','China','India')) %>% 
-   pivot_longer(cols = uopp_c:cropland_c,
+  rename(uopp = uopp_c,
+         cropland = cropland_c,
+         rangeland = grazing_c) %>%
+   pivot_longer(cols = uopp:cropland,
                 names_to = "land_type",
                 values_to = "ha")
 
@@ -121,7 +172,8 @@ Land_use %>%
          
 ```
 
-## Slide 6
+## 
+
 ```{r echo=FALSE}
 ggplotly(
   ggplot(land_use,
@@ -134,7 +186,7 @@ ggplotly(
 )
 ```
 
-## Slide 7
+## 
 
 ```{r}
 url <- "https://ourworldindata.org/grapher/land-area-per-crop-type.csv?v=1&csvType=full&useColumnShortNames=true"
@@ -192,6 +244,44 @@ ggplotly(
          title = "Crop Area Use")
   )
 ```
+
+## 
+
+```{r}
+url <- "https://ourworldindata.org/grapher/ghg-emissions-by-sector.csv?v=1&csvType=full&useColumnShortNames=true"
+
+co2 <- read_csv(url) %>%
+  filter(year == 2023,
+         entity %in% c("United States",
+                       "China",
+                       "India")
+                       ) %>%
+  select(entity,
+         year,
+         agriculture_ghg_emissions) %>%
+  rename(country = entity,
+         agriculture_emissions = agriculture_ghg_emissions)
+
+co2 %>%
+  select(country,
+         agriculture_emissions) %>%
+  kable()
+
+```
+
+## Conclusion
+
+**No one is perfect**
+
+| USA | India |
+|----|----|
+| high caloric supply to a large population | supply a massive population with minimal land |
+| BUT too much meat | good crop variability |
+| BUT low crop variability | BUT high agricultural CO~2~ |
+
+## **The End!**
+
+
 
 
 
