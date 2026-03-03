@@ -18,35 +18,180 @@ library(leaflet)
 library(patchwork)
 library(tidyr)
 library(purrr)
+library(knitr)
+library(plotly)
+`%not_in%` <- negate(`%in%`)
 ```
 
-```{r}
-url <- 'https://ourworldindata.org/explorers/global-food.csv?v=1&csvType=full&useColumnShortNames=true&Food=Maize+%28corn%29&Metric=Production&Per+Capita=false&Per+capita=false?'
-`%not_in%` <- negate(`%in%`)
-food_producers <- read_csv(url) %>%
-  filter(entity %not_in% c("World",
+## Slide 1
+```{r, echo=FALSE}
+url <- "https://ourworldindata.org/explorers/global-food.csv?v=1&csvType=full&useColumnShortNames=true&Food=All+food&Metric=Food+available+for+consumption&Per+capita=true"
+
+calories <- read_csv(url) %>%
+  rename(kilocalories_day_capita = total__00002901__food_available_for_consumption__0664pc__kilocalories_per_day_per_capita, 
+         country = entity) %>%
+  filter(country %not_in% c("World",
                            "North America",
                            "South America",
                            "Africa",
                            "Asia",
                            "Ociana",
                            "Europe"),
-         !grepl("\\(FAO\\)$", entity)) %>%
-  group_by(entity)
-#View(food_producers)
-food_producers %>%
-  pull(entity) %>%
-  unique()
+         !grepl("\\(FAO\\)$", country))
+# View(calories)
 
-fp_2023 <- food_producers %>%
-  filter(year == 2023)
+calories %>% 
+  filter(year == 2023) %>% 
+  arrange(desc(kilocalories_day_capita)) %>%
+  head(6) %>% 
+  select(country, kilocalories_day_capita) %>%
+  kable(col.names = c("Country", "kilocalories/day/capita"))
+```
 
-  ggplot(food_producers,
-       aes(x = entity,
-           y = maize__00000056__production__005510__tonnes)
-       ) +
-  geom_col()
+## Slide 2
+```{r}
+url <- "https://ourworldindata.org/grapher/population-with-un-projections.csv?v=1&csvType=full&useColumnShortNames=true"
 
+population <- read_csv(url) %>%  
+  rename(country = entity,
+         population = population__sex_all__age_all__variant_estimates) %>%
+  filter(country %not_in% c("World",
+                           "North America",
+                           "South America",
+                           "Africa",
+                           "Asia",
+                           "Ociana",
+                           "Europe"),
+         !grepl("\\(FAO\\)$", country))
+joincal <- left_join(calories, population, by = c('country', 'year'))
+
+joincal %>% 
+  filter(year == 2023) %>% 
+  arrange(desc(kilocalories_day_capita)) %>%
+  head(6) %>% 
+  select(country, kilocalories_day_capita, population) %>%
+  kable(col.names = c("Country", "kilocalories/day/capita", "Population"))
 
 ```
+
+## Slide 3
+```{r}
+joincal %>%
+  mutate(kilocalories_day = kilocalories_day_capita*population) %>%
+  filter(year == 2023) %>% 
+  arrange(desc(kilocalories_day_capita)) %>%
+  head(6) %>% 
+  select(country, kilocalories_day) %>%
+  kable(col.names = c("Country", "kilocalories/day"))
+```
+## Slide 4
+```{r}
+joincal %>%
+  mutate(kilocalories_day = kilocalories_day_capita*population) %>%
+  filter(year == 2023, 
+         country %in% c('United States', 'China', 'India')) %>%
+  select(country, population, kilocalories_day_capita, kilocalories_day) %>%
+  kable(col.names = c("Country", "Population", "kilocalories/day/capita", "kilocalories/day"))
+```
+## Slide 5
+```{r}
+# Land use  ====================================================================
+# https://ourworldindata.org/land-use#how-has-global-land-use-changed-over-the-long-term
+url <- 'https://ourworldindata.org/grapher/land-use-over-the-long-term.csv?v=1&csvType=full&useColumnShortNames=true'
+Land_use <- read_csv(url)
+land_use <-
+  Land_use %>% 
+  filter( year %in% 2023, 
+          entity %in% c('United States','China','India')) %>% 
+   pivot_longer(cols = uopp_c:cropland_c,
+                names_to = "land_type",
+                values_to = "ha")
+
+joincal2 <- joincal %>%
+  mutate(kilocalories = kilocalories_day_capita*population*365) %>%
+  rename(entity = country)
+Land_use %>%
+  filter(year %in% 2023, 
+         entity %in% c('United States','China','India')) %>%
+  mutate(total_ha = cropland_c + grazing_c) %>%
+  inner_join(joincal2, by = c("entity", "year")) %>%  
+  mutate(ratio = kilocalories/total_ha) %>%
+  select(entity,ratio) %>%
+  kable(col.names = c("Country", "kilocalories/ha"))
+         
+```
+
+## Slide 6
+```{r echo=FALSE}
+ggplotly(
+  ggplot(land_use,
+       aes(x = entity,
+           y = (ha/1000000),
+           fill = land_type)) +
+  geom_col() +
+  labs(y = "area in millions of ha",
+       x = "Country")
+)
+```
+
+## Slide 7
+
+```{r}
+url <- "https://ourworldindata.org/grapher/land-area-per-crop-type.csv?v=1&csvType=full&useColumnShortNames=true"
+Crop <- read_csv(url)
+crop <- 
+  Crop %>% 
+  filter( year %in% 2023, 
+          entity %in% c('United States','China','India')) %>%
+  mutate(country = entity,
+         maize = maize__00000056__area_harvested__005312__hectares,
+         wheat = wheat__00000015__area_harvested__005312__hectares,
+         potatoes = potatoes__00000116__area_harvested__005312__hectares,
+         sugar = sugar_cane__00000156__area_harvested__005312__hectares,
+         soybeans = soybeans__00000236__area_harvested__005312__hectares,
+         beans = beans__dry__00000176__area_harvested__005312__hectares,
+         rice = rice__00000027__area_harvested__005312__hectares,
+         rapeseed = rapeseed__00000270__area_harvested__005312__hectares,
+         other = sum(sugar_beet__00000157__area_harvested__005312__hectares,
+                     cocoa_beans__00000661__area_harvested__005312__hectares,
+                     cassava__00000125__area_harvested__005312__hectares,
+                     tomatoes__00000388__area_harvested__005312__hectares,
+                     peas__dry__00000187__area_harvested__005312__hectares,
+                     bananas__00000486__area_harvested__005312__hectares,
+                     oranges__00000490__area_harvested__005312__hectares,
+                     apples__00000515__area_harvested__005312__hectares,
+                     rye__00000071__area_harvested__005312__hectares,
+                     barley__00000044__area_harvested__005312__hectares,
+                     na.rm = TRUE)
+         ) %>%
+  pivot_longer(cols = maize:other,
+               names_to = "Crop",
+               values_to = "ha") %>%
+  mutate(Crop = 
+           factor(Crop,
+                            levels = c("maize",
+                                       "wheat",
+                                       "potatoes",
+                                       "sugar",
+                                       "soybeans",
+                                       "beans",
+                                       "rice",
+                                       "rapeseed", 
+                                       "other"))
+         )
+
+ggplotly(
+  ggplot(crop,
+       aes(x = country,
+           y = (ha/1000000),
+           fill = Crop)
+       ) +
+  geom_col() +
+    labs(x = "Country",
+         y = "area in millions of ha",
+         title = "Crop Area Use")
+  )
+```
+
+
 
